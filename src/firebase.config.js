@@ -1,7 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
-import { getAnalytics } from 'firebase/analytics';
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 
 // Firebase configuration from environment variables
 const firebaseConfig = {
@@ -21,14 +20,31 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
-// Initialize Firestore with modern persistence (replaces deprecated enableIndexedDbPersistence)
-export const db = initializeFirestore(app, {
-    localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager()
-    })
-});
+// Initialize Firestore with offline persistence (with fallback)
+let firestoreDb;
+try {
+    firestoreDb = initializeFirestore(app, {
+        localCache: persistentLocalCache({
+            tabManager: persistentMultipleTabManager()
+        })
+    });
+} catch (err) {
+    // Fallback: if persistence fails (e.g., already initialized, unsupported browser)
+    console.warn('Firestore persistence init failed, using default:', err.message);
+    firestoreDb = getFirestore(app);
+}
+export const db = firestoreDb;
 
-// Initialize Analytics (only in production)
-export const analytics = import.meta.env.PROD ? getAnalytics(app) : null;
+// Initialize Analytics (only in production, lazy load to avoid crashes)
+export let analytics = null;
+if (import.meta.env.PROD && typeof window !== 'undefined') {
+    try {
+        import('firebase/analytics').then(({ getAnalytics }) => {
+            analytics = getAnalytics(app);
+        }).catch(() => { });
+    } catch (e) {
+        // Analytics not critical
+    }
+}
 
 export default app;
