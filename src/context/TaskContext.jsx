@@ -55,6 +55,18 @@ function taskReducer(state, action) {
     }
 }
 
+// Categories
+const categories = [
+    { id: 'personal', name: 'Personal', icon: '👤' },
+    { id: 'work', name: 'Work', icon: '💼' },
+    { id: 'education', name: 'Education', icon: '📚' },
+    { id: 'health', name: 'Health', icon: '🏥' },
+    { id: 'finance', name: 'Finance', icon: '💰' },
+    { id: 'shopping', name: 'Shopping', icon: '🛒' },
+    { id: 'social', name: 'Social', icon: '🎉' },
+    { id: 'other', name: 'Other', icon: '📌' },
+];
+
 // Sample tasks for demo mode
 const sampleTasks = [
     {
@@ -353,6 +365,7 @@ export function TaskProvider({ children }) {
             allTasks: state.tasks,
             loading,
             stats,
+            categories,
             filter: state.filter,
             searchQuery: state.searchQuery,
             selectedCategory: state.selectedCategory,

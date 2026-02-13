@@ -135,8 +135,8 @@ export default function TasksPage() {
             const q = searchQuery.toLowerCase();
             result = result.filter(t =>
                 t.title.toLowerCase().includes(q) ||
-                t.description.toLowerCase().includes(q) ||
-                t.labels.some(l => l.toLowerCase().includes(q))
+                (t.description || '').toLowerCase().includes(q) ||
+                (t.labels || []).some(l => l.toLowerCase().includes(q))
             );
         }
 
@@ -258,7 +258,8 @@ export default function TasksPage() {
                                     const cat = categories.find(c => c.id === task.category);
                                     const isOverdue = !task.completed && task.dueDate && task.dueDate < today;
                                     const isExpanded = expandedTask === task.id;
-                                    const subCompleted = task.subtasks.filter(s => s.completed).length;
+                                    const subtasks = task.subtasks || [];
+                                    const subCompleted = subtasks.filter(s => s.completed).length;
 
                                     return (
                                         <Draggable key={task.id} draggableId={task.id} index={index}>
@@ -295,15 +296,15 @@ export default function TasksPage() {
                                                                     </span>
                                                                 )}
                                                                 {cat && <span className="badge badge-category">{cat.icon} {cat.name}</span>}
-                                                                {task.subtasks.length > 0 && (
+                                                                {subtasks.length > 0 && (
                                                                     <span className="task-meta-item">
-                                                                        <Check size={13} /> {subCompleted}/{task.subtasks.length}
+                                                                        <Check size={13} /> {subCompleted}/{subtasks.length}
                                                                         <div className="task-subtask-progress">
-                                                                            <div className="task-subtask-progress-fill" style={{ width: `${(subCompleted / task.subtasks.length) * 100}%` }} />
+                                                                            <div className="task-subtask-progress-fill" style={{ width: `${(subCompleted / subtasks.length) * 100}%` }} />
                                                                         </div>
                                                                     </span>
                                                                 )}
-                                                                {task.labels.map(l => (
+                                                                {(task.labels || []).map(l => (
                                                                     <span key={l} className="badge" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-tertiary)' }}>#{l}</span>
                                                                 ))}
                                                             </div>
@@ -318,9 +319,9 @@ export default function TasksPage() {
                                                     </div>
 
                                                     {/* Expanded subtasks */}
-                                                    {isExpanded && task.subtasks.length > 0 && (
+                                                    {isExpanded && subtasks.length > 0 && (
                                                         <div style={{ marginLeft: '52px', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--border-light)' }}>
-                                                            {task.subtasks.map((st, idx) => (
+                                                            {subtasks.map((st, idx) => (
                                                                 <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0', fontSize: '13px' }}>
                                                                     <div
                                                                         className={`task-checkbox ${st.completed ? 'checked' : ''}`}
