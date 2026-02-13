@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { getAnalytics } from 'firebase/analytics';
 
 // Firebase configuration from environment variables
@@ -19,19 +19,14 @@ const app = initializeApp(firebaseConfig);
 
 // Initialize services
 export const auth = getAuth(app);
-export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 
-// Enable offline persistence
-if (typeof window !== 'undefined') {
-    enableIndexedDbPersistence(db).catch((err) => {
-        if (err.code === 'failed-precondition') {
-            console.warn('Multiple tabs open, persistence enabled in first tab only');
-        } else if (err.code === 'unimplemented') {
-            console.warn('Browser does not support offline persistence');
-        }
-    });
-}
+// Initialize Firestore with modern persistence (replaces deprecated enableIndexedDbPersistence)
+export const db = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+    })
+});
 
 // Initialize Analytics (only in production)
 export const analytics = import.meta.env.PROD ? getAnalytics(app) : null;

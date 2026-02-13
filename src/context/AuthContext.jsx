@@ -21,7 +21,6 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (USE_DEMO_MODE) {
-      // Demo mode: use localStorage
       const savedUser = localStorage.getItem('taskflow_user');
       if (savedUser) {
         try {
@@ -37,9 +36,13 @@ export function AuthProvider({ children }) {
     // Production mode: use Firebase Auth
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // Get additional user data from Firestore
-        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-        const userData = userDoc.exists() ? userDoc.data() : {};
+        let userData = {};
+        try {
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          userData = userDoc.exists() ? userDoc.data() : {};
+        } catch (e) {
+          console.warn('Could not fetch user doc:', e.message);
+        }
 
         setUser({
           id: firebaseUser.uid,
@@ -60,7 +63,6 @@ export function AuthProvider({ children }) {
 
   const loginWithGoogle = useCallback(async () => {
     if (USE_DEMO_MODE) {
-      // Demo fallback
       const demoUser = {
         id: 'demo_' + Date.now(),
         name: 'Demo User',
@@ -73,29 +75,21 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const firebaseUser = result.user;
+    const result = await signInWithPopup(auth, googleProvider);
+    const firebaseUser = result.user;
 
-      // Create/update user document in Firestore
-      await setDoc(doc(db, 'users', firebaseUser.uid), {
-        name: firebaseUser.displayName,
-        email: firebaseUser.email,
-        avatar: firebaseUser.photoURL,
-        provider: 'google',
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString()
-      }, { merge: true });
-
-    } catch (error) {
-      console.error('Google sign-in error:', error);
-      throw error;
-    }
+    await setDoc(doc(db, 'users', firebaseUser.uid), {
+      name: firebaseUser.displayName,
+      email: firebaseUser.email,
+      avatar: firebaseUser.photoURL,
+      provider: 'google',
+      createdAt: new Date().toISOString(),
+      lastLogin: new Date().toISOString()
+    }, { merge: true });
   }, []);
 
-  const loginWithEmail = useCallback(async (name, email, password = 'demo123456') => {
+  const loginWithEmail = useCallback(async (name, email, password) => {
     if (USE_DEMO_MODE) {
-      // Demo fallback
       const userData = {
         id: 'email_' + Date.now(),
         name: name || 'User',
@@ -108,24 +102,27 @@ export function AuthProvider({ children }) {
       return;
     }
 
+    // Try creating a new account first
+    let result;
     try {
-      // Try to sign in first
-      let result;
-      try {
+      result = await createUserWithEmailAndPassword(auth, email, password);
+      // New user — set display name
+      await firebaseUpdateProfile(result.user, { displayName: name });
+    } catch (createError) {
+      // If email already exists, sign in instead
+      if (createError.code === 'auth/email-already-in-use') {
         result = await signInWithEmailAndPassword(auth, email, password);
-      } catch (signInError) {
-        // If user doesn't exist, create account
-        if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/wrong-password') {
-          result = await createUserWithEmailAndPassword(auth, email, password);
-
-          // Update profile with name
-          await firebaseUpdateProfile(result.user, { displayName: name });
-        } else {
-          throw signInError;
-        }
+      } else if (createError.code === 'auth/weak-password') {
+        throw new Error('Password must be at least 6 characters');
+      } else if (createError.code === 'auth/invalid-email') {
+        throw new Error('Please enter a valid email address');
+      } else {
+        throw createError;
       }
+    }
 
-      // Create/update user document
+    // Create/update user document in Firestore
+    try {
       await setDoc(doc(db, 'users', result.user.uid), {
         name: name || result.user.displayName || 'User',
         email: result.user.email,
@@ -133,10 +130,9 @@ export function AuthProvider({ children }) {
         createdAt: new Date().toISOString(),
         lastLogin: new Date().toISOString()
       }, { merge: true });
-
-    } catch (error) {
-      console.error('Email sign-in error:', error);
-      throw error;
+    } catch (e) {
+      console.warn('Could not write user doc:', e.message);
+      // Don't block login if Firestore write fails
     }
   }, []);
 
@@ -147,12 +143,7 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error('Logout error:', error);
-      throw error;
-    }
+    await signOut(auth);
   }, []);
 
   const updateProfile = useCallback(async (updates) => {
@@ -165,22 +156,12 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    try {
-      if (auth.currentUser) {
-        // Update Firebase Auth profile
-        if (updates.name) {
-          await firebaseUpdateProfile(auth.currentUser, { displayName: updates.name });
-        }
-
-        // Update Firestore user document
-        await setDoc(doc(db, 'users', auth.currentUser.uid), updates, { merge: true });
-
-        // Update local state
-        setUser(prev => ({ ...prev, ...updates }));
+    if (auth.currentUser) {
+      if (updates.name) {
+        await firebaseUpdateProfile(auth.currentUser, { displayName: updates.name });
       }
-    } catch (error) {
-      console.error('Profile update error:', error);
-      throw error;
+      await setDoc(doc(db, 'users', auth.currentUser.uid), updates, { merge: true });
+      setUser(prev => ({ ...prev, ...updates }));
     }
   }, []);
 
