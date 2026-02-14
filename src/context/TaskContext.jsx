@@ -50,6 +50,24 @@ function taskReducer(state, action) {
             return { ...state, selectedCategory: action.payload };
         case 'REORDER_TASKS':
             return { ...state, tasks: action.payload };
+        case 'MOVE_TASK': {
+            const { taskId, newStatus, newIndex } = action.payload;
+            const taskToMove = state.tasks.find(t => t.id === taskId);
+            if (!taskToMove) return state;
+
+            // Remove from old position
+            const newTasks = state.tasks.filter(t => t.id !== taskId);
+
+            // Update status
+            const updatedTask = { ...taskToMove, status: newStatus, completed: newStatus === 'done' };
+
+            // Insert at new position (simplified for now, complex index handling usually done in component)
+            // For Kanban, we usually just update the status and let the sort order handle it
+            // ensuring we put it in the list
+            newTasks.splice(newIndex, 0, updatedTask);
+
+            return { ...state, tasks: newTasks };
+        }
         default:
             return state;
     }
@@ -191,6 +209,8 @@ export function TaskProvider({ children }) {
                 ...doc.data(),
                 createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
                 updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+                // Migration: Ensure status exists
+                status: doc.data().status || (doc.data().completed ? 'done' : 'todo'),
             }));
             dispatch({ type: 'SET_TASKS', payload: tasks });
             setLoading(false);
@@ -213,7 +233,9 @@ export function TaskProvider({ children }) {
         const newTask = {
             ...taskData,
             id: generateId(),
+            id: generateId(),
             completed: false,
+            status: 'todo', // Default status for new tasks
             subtasks: taskData.subtasks || [],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -272,9 +294,31 @@ export function TaskProvider({ children }) {
     const toggleTask = useCallback(async (taskId) => {
         const task = state.tasks.find(t => t.id === taskId);
         if (task) {
-            await updateTask(taskId, { completed: !task.completed });
+            const newCompleted = !task.completed;
+            await updateTask(taskId, {
+                completed: newCompleted,
+                status: newCompleted ? 'done' : 'todo'
+            });
         }
     }, [state.tasks, updateTask]);
+
+    const moveTask = useCallback(async (taskId, newStatus, newIndex) => {
+        // Optimistic update
+        dispatch({ type: 'MOVE_TASK', payload: { taskId, newStatus, newIndex } });
+
+        // Update Firestore
+        // Note: For a real Kanban with strict ordering, we'd need a 'position' field. 
+        // For this MVP, we just update status and let natural sort order (by date) take over.
+        try {
+            await updateTask(taskId, {
+                status: newStatus,
+                completed: newStatus === 'done'
+            });
+        } catch (error) {
+            console.error('Error moving task:', error);
+            // Revert would go here in a full implementation
+        }
+    }, [updateTask]);
 
     const addSubtask = useCallback(async (taskId, subtaskText) => {
         const task = state.tasks.find(t => t.id === taskId);
@@ -373,6 +417,7 @@ export function TaskProvider({ children }) {
             updateTask,
             deleteTask,
             toggleTask,
+            moveTask,
             addSubtask,
             toggleSubtask,
             deleteSubtask,

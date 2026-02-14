@@ -9,11 +9,13 @@ import DashboardPage from './pages/DashboardPage';
 import TasksPage from './pages/TasksPage';
 import CalendarPage from './pages/CalendarPage';
 import ChatPage from './pages/ChatPage';
+import KanbanPage from './pages/KanbanPage';
+import PomodoroPage from './pages/PomodoroPage';
 import SubscriptionPage from './pages/SubscriptionPage';
 import {
   LayoutDashboard, CheckSquare, Calendar, MessageCircle,
   CreditCard, Settings, Sun, Moon, Search, Menu,
-  ChevronLeft, LogOut, X
+  ChevronLeft, LogOut, X, KanbanSquare, Timer
 } from 'lucide-react';
 
 function AppContent() {
@@ -50,6 +52,8 @@ function AppContent() {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'tasks', label: 'My Tasks', icon: CheckSquare, badge: null },
+    { id: 'kanban', label: 'Kanban Board', icon: KanbanSquare },
+    { id: 'pomodoro', label: 'Focus Timer', icon: Timer },
     { id: 'calendar', label: 'Calendar', icon: Calendar },
     { id: 'chat', label: 'AI Assistant', icon: MessageCircle },
   ];
@@ -61,6 +65,8 @@ function AppContent() {
   const pages = {
     dashboard: <DashboardPage />,
     tasks: <TasksPage />,
+    kanban: <KanbanPage />,
+    pomodoro: <PomodoroPage />,
     calendar: <CalendarPage />,
     chat: <ChatPage />,
     subscription: <SubscriptionPage />,
