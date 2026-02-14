@@ -12,13 +12,14 @@ import CalendarPage from './pages/CalendarPage';
 import ChatPage from './pages/ChatPage';
 import KanbanPage from './pages/KanbanPage';
 import MeetingsPage from './pages/MeetingsPage';
+import KnowledgePage from './pages/KnowledgePage';
 import PomodoroPage from './pages/PomodoroPage';
 import ProjectsPage from './pages/ProjectsPage';
 import SubscriptionPage from './pages/SubscriptionPage';
 import {
   LayoutDashboard, CheckSquare, Calendar, MessageCircle,
   CreditCard, Settings, Sun, Moon, Search, Menu,
-  ChevronLeft, LogOut, X, KanbanSquare, Timer, Briefcase, Users, ChevronDown, Video
+  ChevronLeft, LogOut, X, KanbanSquare, Timer, Briefcase, Users, ChevronDown, Video, BookOpen
 } from 'lucide-react';
 
 function AppContent() {
@@ -57,6 +58,7 @@ function AppContent() {
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'projects', label: 'Projects', icon: Briefcase },
     { id: 'meetings', label: 'Meetings', icon: Video },
+    { id: 'knowledge', label: 'Knowledge Hub', icon: BookOpen },
     { id: 'tasks', label: 'My Tasks', icon: CheckSquare, badge: null },
     { id: 'kanban', label: 'Kanban Board', icon: KanbanSquare },
     { id: 'pomodoro', label: 'Focus Timer', icon: Timer },
@@ -73,6 +75,7 @@ function AppContent() {
     dashboard: <DashboardPage />,
     projects: <ProjectsPage />,
     meetings: <MeetingsPage />,
+    knowledge: <KnowledgePage />,
     tasks: <TasksPage />,
     kanban: <KanbanPage />,
     pomodoro: <PomodoroPage />,

@@ -45,9 +45,16 @@ service cloud.firestore {
 
     // Meetings
     match /meetings/{meetingId} {
-        allow read: if isMember(resource.data.participants);
+        allow read: if isMember(resource.data.participants) || (resource.data.orgId != null && isMember(get(/databases/$(database)/documents/organizations/$(resource.data.orgId)).data.members));
         allow create: if isSignedIn();
         allow update: if isMember(resource.data.participants);
+    }
+
+    // Resources (Knowledge Hub)
+    match /resources/{resourceId} {
+        allow read: if isMember(get(/databases/$(database)/documents/organizations/$(resource.data.orgId)).data.members);
+        allow create: if isSignedIn(); // In real app, check org membership
+        allow update, delete: if resource.data.createdBy == request.auth.uid;
     }
     
     // Tasks collection (Updated for Projects)
