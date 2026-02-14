@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { TaskProvider } from './context/TaskContext';
+import { OrganizationProvider, useOrganization } from './context/OrganizationContext';
 import { SubscriptionProvider, useSubscription } from './context/SubscriptionContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { ToastProvider, ToastContainer } from './components/Toast';
@@ -10,17 +11,20 @@ import TasksPage from './pages/TasksPage';
 import CalendarPage from './pages/CalendarPage';
 import ChatPage from './pages/ChatPage';
 import KanbanPage from './pages/KanbanPage';
+import MeetingsPage from './pages/MeetingsPage';
 import PomodoroPage from './pages/PomodoroPage';
+import ProjectsPage from './pages/ProjectsPage';
 import SubscriptionPage from './pages/SubscriptionPage';
 import {
   LayoutDashboard, CheckSquare, Calendar, MessageCircle,
   CreditCard, Settings, Sun, Moon, Search, Menu,
-  ChevronLeft, LogOut, X, KanbanSquare, Timer
+  ChevronLeft, LogOut, X, KanbanSquare, Timer, Briefcase, Users, ChevronDown, Video
 } from 'lucide-react';
 
 function AppContent() {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { currentOrg, organizations, switchOrg, currentTeam, teams, switchTeam } = useOrganization();
   const { currentTier } = useSubscription();
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -51,6 +55,8 @@ function AppContent() {
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'projects', label: 'Projects', icon: Briefcase },
+    { id: 'meetings', label: 'Meetings', icon: Video },
     { id: 'tasks', label: 'My Tasks', icon: CheckSquare, badge: null },
     { id: 'kanban', label: 'Kanban Board', icon: KanbanSquare },
     { id: 'pomodoro', label: 'Focus Timer', icon: Timer },
@@ -64,6 +70,9 @@ function AppContent() {
 
   const pages = {
     dashboard: <DashboardPage />,
+    dashboard: <DashboardPage />,
+    projects: <ProjectsPage />,
+    meetings: <MeetingsPage />,
     tasks: <TasksPage />,
     kanban: <KanbanPage />,
     pomodoro: <PomodoroPage />,
@@ -96,10 +105,32 @@ function AppContent() {
       <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''} ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
           <img src="/logo.png" alt="TaskFlow Pro" className="sidebar-logo" />
-          {!sidebarCollapsed && (
-            <div className="sidebar-brand">
-              <h2>TaskFlow Pro</h2>
-              <span>{currentTier} plan</span>
+          {!sidebarCollapsed && currentOrg && (
+            <div className="sidebar-brand" style={{ cursor: 'pointer' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ fontWeight: 'bold' }}>{currentOrg.name}</div>
+                <ChevronDown size={14} />
+              </div>
+              <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{currentTeam ? currentTeam.name : 'All Teams'}</div>
+
+              {/* Simple Dropdown for Demo - In real app, use a proper dropdown component */}
+              <select
+                style={{
+                  position: 'absolute',
+                  opacity: 0,
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  cursor: 'pointer'
+                }}
+                onChange={(e) => switchOrg(e.target.value)}
+                value={currentOrg.id}
+              >
+                {organizations.map(org => (
+                  <option key={org.id} value={org.id}>{org.name}</option>
+                ))}
+              </select>
             </div>
           )}
           <button
@@ -225,11 +256,13 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <SubscriptionProvider>
-          <TaskProvider>
-            <ToastProvider>
-              <AppContent />
-            </ToastProvider>
-          </TaskProvider>
+          <OrganizationProvider>
+            <TaskProvider>
+              <ToastProvider>
+                <AppContent />
+              </ToastProvider>
+            </TaskProvider>
+          </OrganizationProvider>
         </SubscriptionProvider>
       </AuthProvider>
     </ThemeProvider>

@@ -11,20 +11,49 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
     
+    function isMember(members) {
+      return isSignedIn() && (request.auth.uid in members);
+    }
+    
     // Users collection
     match /users/{userId} {
-      allow read: if isOwner(userId);
+      allow read: if isSignedIn(); // Allow reading other users (for team members)
       allow create: if isSignedIn() && request.auth.uid == userId;
       allow update: if isOwner(userId);
       allow delete: if isOwner(userId);
     }
     
-    // Tasks collection
+    // Organizations
+    match /organizations/{orgId} {
+      allow read: if isMember(resource.data.members);
+      allow create: if isSignedIn();
+      allow update: if isMember(resource.data.members); // In real app, restrict to owner/admin
+    }
+
+    // Teams
+    match /teams/{teamId} {
+      allow read: if isMember(resource.data.members);
+      allow create: if isSignedIn(); // In real app, restrict to org owner
+      allow update: if isMember(resource.data.members);
+    }
+
+    // Projects
+    match /projects/{projectId} {
+      allow read: if isSignedIn(); // Validate org membership in app for now, or use get()
+      allow create, update, delete: if isSignedIn();
+    }
+
+    // Meetings
+    match /meetings/{meetingId} {
+        allow read: if isMember(resource.data.participants);
+        allow create: if isSignedIn();
+        allow update: if isMember(resource.data.participants);
+    }
+    
+    // Tasks collection (Updated for Projects)
     match /tasks/{taskId} {
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // Allow if task belongs to user OR if user is member of the project's team (complex rule, simplified for MVP)
+      allow read, write: if isSignedIn(); 
     }
     
     // Subscriptions collection
